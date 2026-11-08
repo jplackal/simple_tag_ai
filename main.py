@@ -30,8 +30,8 @@ max_time = 15
 fps = 60
 
 # In percentage
-mutate_chance = 10
-mutate_amount = 0.1
+mutate_chance = 25
+mutate_amount = 0.3
 
 collision_dist = 30
 collision_dist **= 2
@@ -233,6 +233,9 @@ class agent:
 def add_to_hall_of_fame(tagger, runner):
     tagger_hall_of_fame.append(copy.deepcopy(tagger))
     runner_hall_of_fame.append(copy.deepcopy(runner))
+    if len(tagger_hall_of_fame) > 20:
+        tagger_hall_of_fame.pop(0)
+        runner_hall_of_fame.pop(0)
 
 
 def mutate_all():
@@ -331,7 +334,6 @@ def showcase_setup():
 
 
 def showcase_step():
-    global time
 
     t_direction = tagger.simulate_step(runner)
     r_direction = runner.simulate_step(tagger)
@@ -340,12 +342,11 @@ def showcase_step():
     runner.apply_vel(r_direction)
 
     if check_collision(tagger, runner):
-        time = max_frames
+        tagger.reset_pos()
+        runner.reset_pos()
 
     tagger.draw_self()
     runner.draw_self()
-
-
 # BACKGROUND TRAINING:
 # This function starts training without blocking Pygame.
 def start_training():
@@ -372,8 +373,13 @@ async def main():
 
         # BACKGROUND TRAINING:
         # Check whether the training thread has finished.
-        if training_task.done():
-            tagger_score, runner_score = training_task.result()
+        if training_task is not None and training_task.done():
+            try:
+                tagger_score, runner_score = training_task.result()
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                raise
 
             gen += 1
             print("Generation:", gen)
