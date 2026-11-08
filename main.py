@@ -22,6 +22,13 @@ output_count = 4
 friction = 0.9
 tagger_hall_of_fame = []
 runner_hall_of_fame = []
+max_time = 15
+fps = 60
+max_frames = max_time * fps
+def setup():
+    global taggers, runners
+    taggers = [agent("tagger") for i in range(ai_count)]
+    runners = [agent("runner") for i in range(ai_count)]
 class nueral_network:
     def __init__(self):
         self.network = []
@@ -80,15 +87,16 @@ class nueral_network:
     
 class agent:
     def __init__(self, role):
-        self.x = 0
-        self.y = 0
+        self.y = HEIGHT/2
         self.vx = 0
         self.vy = 0
         self.type = role
         if self.type == "tagger":
             self.speed = tagger_speed
+            self.x = WIDTH/5
         else:
             self.speed = runner_speed
+            self.x = WIDTH/5*4
         self.brain = nueral_network()
     def input_data(self, other):
         return [
@@ -122,8 +130,27 @@ class agent:
         outputs = self.brain.calculate(inputs)
         direction = outputs.index(max(outputs))
         self.apply_vel(direction)
-        
+setup()
 time = 0
+def reset():
+    global time
+    print("reset")
+    time = 0
+    simulate()
+def simulate():
+    for i in range(0, max_frames):
+        print("frame")
+def showcase_step():
+    print("does one step of showcase")
+def check_reset():
+    if time >= max_frames:
+        reset()
+    else:
+        time += 1
+        showcase_step(
+        )
+gen = 0
+reset()
 async def main():
     running = True
     while running:
@@ -132,6 +159,6 @@ async def main():
                 running = False
         screen.fill((0, 0, 0))
         pygame.display.flip()
-        clock.tick(60)
+        clock.tick(fps)
         await asyncio.sleep(0)
 asyncio.run(main())
