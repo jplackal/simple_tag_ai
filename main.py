@@ -14,8 +14,6 @@ inner_layers = 3
 inner_nueron_count = 20
 ai_count = 25
 input_count = 8
-networks_tagger = []
-networks_runner = []
 tagger_speed = 5
 runner_speed = 5
 output_count = 4
@@ -24,6 +22,13 @@ tagger_hall_of_fame = []
 runner_hall_of_fame = []
 max_time = 15
 fps = 60
+#in percentage
+mutate_chance = 10
+mutate_amount = 0.1
+collision_dist = 30
+collision_dist **= 2
+best_r = 0
+best_t = 0
 max_frames = max_time * fps
 def setup():
     global taggers, runners
@@ -84,6 +89,14 @@ class nueral_network:
             total_w = self.sigmoid(total_w)
             new.append(total_w)
         return new
+    def mutate_self(self):
+        for i in range(0, len(self.network)):
+            for i2 in range(0, len(self.network[i])):
+                for i3 in range(0, len(self.network[i][i2][0])):
+                    if random.randint(0,100)<= mutate_chance:
+                        self.network[i][i2][0][i3] += random.uniform((0-mutate_amount),mutate_amount)
+                if random.randint(0,100)<= mutate_chance:
+                    self.network[i][i2][1] += random.uniform((0-mutate_amount),mutate_amount)
     
 class agent:
     def __init__(self, role):
@@ -129,7 +142,15 @@ class agent:
         inputs = self.input_data(other)
         outputs = self.brain.calculate(inputs)
         direction = outputs.index(max(outputs))
-        self.apply_vel(direction)
+        return direction
+    def reset_pos(self):
+        self.y = HEIGHT/2
+        self.vx = 0
+        self.vy = 0
+        if self.type == "tagger":
+            self.x = WIDTH/5
+        else:
+            self.x = WIDTH/5*4
 setup()
 time = 0
 def reset():
@@ -137,19 +158,62 @@ def reset():
     print("reset")
     time = 0
     simulate()
+def add_to_hall_of_fame(tagger, runner):
+    tagger_hall_of_fame.append(copy.deepcopy(tagger))
+    runner_hall_of_fame.append(copy.deepcopy(runner))
 def simulate():
-    for i in range(0, max_frames):
-        print("frame")
+    times_t = []
+    for i in range(0, ai_count):
+        total_time = sum(run_match(taggers[i], runner_hall_of_fame[i2]) for i2 in range(0, len(runner_hall_of_fame)))
+        times_t.append(total_time)
+    times_r = []
+    for i in range(0, ai_count):
+        total_time = sum(run_match(runners[i], tagger_hall_of_fame[i2]) for i2 in range(0, len(tagger_hall_of_fame)))
+        times_r.append(total_time)
+    best_r = times_r.index(max(times_r))
+    best_t = times_t.index(min(times_t))
+    add_to_hall_of_fame(taggers[best_t], runners[best_r])
+def mutate_all():
+    global taggers, runners
+    taggers = [copy.deepcopy(tagger_hall_of_fame[-1]) for i in range(0, ai_count-1)]
+    runners = [copy.deepcopy(runner_hall_of_fame[-1]) for i in range(0, ai_count-1)]
+    for tagger in taggers:
+        tagger.brain.mutate_self()
+    for runner in runners:
+        runner.brain.mutate_self()
+    taggers.append(copy.deepcopy(tagger_hall_of_fame[-1]))
+    runners.append(copy.deepcopy(runner_hall_of_fame[-1]))
+
 def showcase_step():
     print("does one step of showcase")
 def check_reset():
+    global time
     if time >= max_frames:
         reset()
     else:
         time += 1
         showcase_step(
         )
+def check_collision(tagger, runner):
+    dist = (((runner.x - tagger.x + WIDTH / 2) % WIDTH - WIDTH / 2)**2 + ((runner.y - tagger.y + HEIGHT / 2) % HEIGHT - HEIGHT / 2)**2)
+    return dist <= collision_dist
+def run_match(tagger, runner):
+    time = 0
+    tagged = "no"
+    tagger.reset_pos()
+    runner.reset_pos()
+    while time < max_frames and tagged == "no":
+        t_direction = tagger.simulate_step(runner)
+        r_direction = runner.simulate_step(tagger)
+        tagger.apply_vel(t_direction)
+        runner.apply_vel(r_direction)
+        if check_collision(tagger, runner):
+            tagged = "yes"
+        time += 1
+    return time
+
 gen = 0
+add_to_hall_of_fame(taggers[0], runners[0])
 reset()
 async def main():
     running = True
