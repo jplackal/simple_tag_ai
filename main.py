@@ -151,28 +151,25 @@ class agent:
             self.x = WIDTH/5
         else:
             self.x = WIDTH/5*4
+    def draw_self(self):
+        pygame.draw.circle(screen, (255,0,0), (int(self.x), int(self.y)), int(collision_dist**0.5))
 setup()
 time = 0
+def showcase_setup():
+    global tagger, runner
+    tagger = copy.deepcopy(tagger_hall_of_fame[-1])
+    runner = copy.deepcopy(runner_hall_of_fame[-1])
+    tagger.reset_pos()
+    runner.reset_pos()
 def reset():
     global time
     print("reset")
     time = 0
     simulate()
+    showcase_setup()
 def add_to_hall_of_fame(tagger, runner):
     tagger_hall_of_fame.append(copy.deepcopy(tagger))
     runner_hall_of_fame.append(copy.deepcopy(runner))
-def simulate():
-    times_t = []
-    for i in range(0, ai_count):
-        total_time = sum(run_match(taggers[i], runner_hall_of_fame[i2]) for i2 in range(0, len(runner_hall_of_fame)))
-        times_t.append(total_time)
-    times_r = []
-    for i in range(0, ai_count):
-        total_time = sum(run_match(runners[i], tagger_hall_of_fame[i2]) for i2 in range(0, len(tagger_hall_of_fame)))
-        times_r.append(total_time)
-    best_r = times_r.index(max(times_r))
-    best_t = times_t.index(min(times_t))
-    add_to_hall_of_fame(taggers[best_t], runners[best_r])
 def mutate_all():
     global taggers, runners
     taggers = [copy.deepcopy(tagger_hall_of_fame[-1]) for i in range(0, ai_count-1)]
@@ -183,9 +180,31 @@ def mutate_all():
         runner.brain.mutate_self()
     taggers.append(copy.deepcopy(tagger_hall_of_fame[-1]))
     runners.append(copy.deepcopy(runner_hall_of_fame[-1]))
+def simulate():
+    times_t = []
+    for i in range(0, ai_count):
+        total_time = sum(run_match(taggers[i], runner_hall_of_fame[i2]) for i2 in range(0, len(runner_hall_of_fame)))
+        times_t.append(total_time)
+    times_r = []
+    for i in range(0, ai_count):
+        total_time = sum(run_match(tagger_hall_of_fame[i2], runners[i]) for i2 in range(0, len(tagger_hall_of_fame)))
+        times_r.append(total_time)
+    best_r = times_r.index(max(times_r))
+    best_t = times_t.index(min(times_t))
+    add_to_hall_of_fame(taggers[best_t], runners[best_r])
+    mutate_all()
 
 def showcase_step():
+    global time
     print("does one step of showcase")
+    t_direction = tagger.simulate_step(runner)
+    r_direction = runner.simulate_step(tagger)
+    tagger.apply_vel(t_direction)
+    runner.apply_vel(r_direction)
+    if check_collision(tagger, runner):
+        time = max_frames
+    tagger.draw_self()
+    runner.draw_self()
 def check_reset():
     global time
     if time >= max_frames:
@@ -222,6 +241,7 @@ async def main():
             if event.type == pygame.QUIT:
                 running = False
         screen.fill((0, 0, 0))
+        check_reset()
         pygame.display.flip()
         clock.tick(fps)
         await asyncio.sleep(0)
