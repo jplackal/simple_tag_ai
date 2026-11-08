@@ -43,6 +43,7 @@ max_frames = max_time * fps
 time = 0
 gen = 0
 
+max_hall_of_fame = 10
 
 def setup():
     global taggers, runners
@@ -233,7 +234,7 @@ class agent:
 def add_to_hall_of_fame(tagger, runner):
     tagger_hall_of_fame.append(copy.deepcopy(tagger))
     runner_hall_of_fame.append(copy.deepcopy(runner))
-    if len(tagger_hall_of_fame) > 20:
+    if len(tagger_hall_of_fame) > max_hall_of_fame:
         tagger_hall_of_fame.pop(0)
         runner_hall_of_fame.pop(0)
 
@@ -273,7 +274,7 @@ def check_collision(tagger, runner):
 def run_match(tagger, runner):
     time = 0
     tagged = "no"
-
+    total_dist = 0
     tagger.reset_pos()
     runner.reset_pos()
 
@@ -286,10 +287,10 @@ def run_match(tagger, runner):
 
         if check_collision(tagger, runner):
             tagged = "yes"
-
+        total_dist += find_dist(tagger, runner)
         time += 1
 
-    return time
+    return time+(total_dist/time)
 
 
 # This function runs in the background thread.
@@ -331,8 +332,11 @@ def showcase_setup():
 
     tagger.reset_pos()
     runner.reset_pos()
-
-
+def find_dist(tagger,runner):
+    dx = tagger.x-runner.x
+    dy = tagger.y-runner.y
+    dist = ((dx)**2+(dy)**2)**0.5
+    return dist
 def showcase_step():
 
     t_direction = tagger.simulate_step(runner)
