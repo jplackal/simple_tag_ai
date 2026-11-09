@@ -13,25 +13,25 @@ HEIGHT = 750
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("AI Tag")
 clock = pygame.time.Clock()
-
-inner_layers = 3
-inner_nueron_count = 20
+font = pygame.font.SysFont("Arial", 36)
+inner_layers = 2
+inner_nueron_count = 10
 ai_count = 25
 input_count = 8
-tagger_speed = 5
-runner_speed = 5
+tagger_speed = 1
+runner_speed = 1
 output_count = 4
-friction = 0.9
+friction = 0.85
 
 tagger_hall_of_fame = []
 runner_hall_of_fame = []
 
-max_time = 15
+max_time = 5
 fps = 60
 
 # In percentage
-mutate_chance = 25
-mutate_amount = 0.3
+mutate_chance = 10
+mutate_amount = 0.15
 
 collision_dist = 30
 collision_dist **= 2
@@ -43,8 +43,7 @@ max_frames = max_time * fps
 time = 0
 gen = 0
 
-max_hall_of_fame = 10
-
+max_hall_of_fame = 5
 def setup():
     global taggers, runners
     taggers = [agent("tagger") for i in range(ai_count)]
@@ -289,31 +288,37 @@ def run_match(tagger, runner):
             tagged = "yes"
         total_dist += find_dist(tagger, runner)
         time += 1
-
-    return time+(total_dist/time)
+    return (time*50)+(total_dist/time)+find_dist(tagger, runner)*50
 
 
 # This function runs in the background thread.
 def simulate():
+    global progress
+
+    progress = 0
+    total_evaluations = ai_count * 2
+
     times_t = []
 
-    for i in range(0, ai_count):
+    for i in range(ai_count):
         total_time = sum(
             run_match(taggers[i], runner_hall_of_fame[i2])
-            for i2 in range(0, len(runner_hall_of_fame))
+            for i2 in range(len(runner_hall_of_fame))
         )
 
         times_t.append(total_time)
+        progress = (i + 1) / total_evaluations * 100
 
     times_r = []
 
-    for i in range(0, ai_count):
+    for i in range(ai_count):
         total_time = sum(
             run_match(tagger_hall_of_fame[i2], runners[i])
-            for i2 in range(0, len(tagger_hall_of_fame))
+            for i2 in range(len(tagger_hall_of_fame))
         )
 
         times_r.append(total_time)
+        progress = (ai_count + i + 1) / total_evaluations * 100
 
     best_r = times_r.index(max(times_r))
     best_t = times_t.index(min(times_t))
@@ -322,8 +327,6 @@ def simulate():
     mutate_all()
 
     return min(times_t), max(times_r)
-
-
 def showcase_setup():
     global tagger, runner
 
@@ -332,11 +335,11 @@ def showcase_setup():
 
     tagger.reset_pos()
     runner.reset_pos()
-def find_dist(tagger,runner):
-    dx = tagger.x-runner.x
-    dy = tagger.y-runner.y
-    dist = ((dx)**2+(dy)**2)**0.5
-    return dist
+def find_dist(tagger, runner):
+    dx = (runner.x - tagger.x + WIDTH / 2) % WIDTH - WIDTH / 2
+    dy = (runner.y - tagger.y + HEIGHT / 2) % HEIGHT - HEIGHT / 2
+
+    return math.sqrt(dx**2 + dy**2)
 def showcase_step():
 
     t_direction = tagger.simulate_step(runner)
@@ -355,10 +358,39 @@ def showcase_step():
 # This function starts training without blocking Pygame.
 def start_training():
     return asyncio.create_task(asyncio.to_thread(simulate))
+def draw_loading_bar(progress):
+    bar_width = 300
+    bar_height = 20
 
+    bar_x = WIDTH // 2 - bar_width // 2
+    bar_y = HEIGHT - 60
 
+    # Background
+    pygame.draw.rect(
+        screen, (70, 70, 70),
+        (bar_x, bar_y, bar_width, bar_height)
+    )
+
+    # Filled portion
+    filled_width = int(bar_width * progress / 100)
+
+    pygame.draw.rect(
+        screen, (0, 220, 100),
+        (bar_x, bar_y, filled_width, bar_height)
+    )
+
+    # Outline
+    pygame.draw.rect(
+        screen, (255, 255, 255),
+        (bar_x, bar_y, bar_width, bar_height), 2
+    )
+
+    # Percentage
+    text = font.render(f"Training: {progress:.1f}%", True, (255, 255, 255))
+    screen.blit(text, (bar_x, bar_y - 40))
+progress = 0
 async def main():
-    global time, gen
+    global time, gen, progress
 
     running = True
 
@@ -413,7 +445,10 @@ async def main():
             else:
                 tagger.draw_self()
                 runner.draw_self()
-
+        text = font.render(f"Generation : {gen}", True, (255, 255, 255))
+        screen.blit(text, (20, 20))
+        if time >= max_frames and training_task is not None:
+            draw_loading_bar(progress)
         pygame.display.flip()
         clock.tick(fps)
         await asyncio.sleep(0)
@@ -427,3 +462,6 @@ add_to_hall_of_fame(taggers[0], runners[0])
 
 # Start the program.
 asyncio.run(main())
+
+#thnigs to add, read me, a bigger game window, maybe a slwoer speed
+#scribble : 
