@@ -90,4 +90,3 @@ After evaluating a generation:
 
 1. The best tagger and runner are selected.
 2. Copies of these agents are saved in the Hall of Fame.
-3. Most of
