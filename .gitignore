@@ -4,3 +4,13 @@ build/
 web/
 .venv/
 venv/
+# Pygbag generated files
+/build/
+/web/
+
+# Python generated files
+__pycache__/
+*.py[cod]
+
+# macOS
+.DS_Store
