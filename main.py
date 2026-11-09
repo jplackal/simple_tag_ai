@@ -290,7 +290,7 @@ def check_collision(tagger, runner):
 # Both agents receive the same score.
 # The tagger wants to MINIMIZE it.
 # The runner wants to MAXIMIZE it.
-def run_match(tagger, runner):
+async def run_match(tagger, runner):
 
     time = 0
     total_dist = 0
@@ -305,12 +305,10 @@ def run_match(tagger, runner):
         t_direction = tagger.simulate_step(runner)
         r_direction = runner.simulate_step(tagger)
 
-        # Both decide before either moves
         tagger.apply_vel(t_direction)
         runner.apply_vel(r_direction)
 
         current_dist = find_dist(tagger, runner)
-
         total_dist += current_dist
 
         time += 1
@@ -318,10 +316,13 @@ def run_match(tagger, runner):
         if check_collision(tagger, runner):
             tagged = True
 
+        # Give the browser time to process events
+        if time % 30 == 0:
+            await asyncio.sleep(0)
+
     average_dist = total_dist / time
     final_dist = find_dist(tagger, runner)
 
-    # Normalize distances to values between 0 and 1
     average_dist_score = average_dist / max_distance
     final_dist_score = final_dist / max_distance
 
@@ -370,8 +371,7 @@ def mutate_all():
     runners.append(copy.deepcopy(runner_hall_of_fame[-1]))
 
 
-# Runs in the background thread
-def simulate():
+async def simulate():
 
     global progress
 
@@ -381,13 +381,19 @@ def simulate():
 
     times_t = []
 
-    # Evaluate taggers against every runner champion
+    # Evaluate taggers
     for i in range(ai_count):
 
-        total_time = sum(
-            run_match(taggers[i], runner_hall_of_fame[i2])
-            for i2 in range(len(runner_hall_of_fame))
-        )
+        total_time = 0
+
+        for i2 in range(len(runner_hall_of_fame)):
+
+            score = await run_match(
+                taggers[i],
+                runner_hall_of_fame[i2]
+            )
+
+            total_time += score
 
         times_t.append(total_time)
 
@@ -395,22 +401,25 @@ def simulate():
 
     times_r = []
 
-    # Evaluate runners against every tagger champion
+    # Evaluate runners
     for i in range(ai_count):
 
-        total_time = sum(
-            run_match(tagger_hall_of_fame[i2], runners[i])
-            for i2 in range(len(tagger_hall_of_fame))
-        )
+        total_time = 0
+
+        for i2 in range(len(tagger_hall_of_fame)):
+
+            score = await run_match(
+                tagger_hall_of_fame[i2],
+                runners[i]
+            )
+
+            total_time += score
 
         times_r.append(total_time)
 
         progress = (ai_count + i + 1) / total_evaluations * 100
 
-    # Lowest score wins for taggers
     best_t = times_t.index(min(times_t))
-
-    # Highest score wins for runners
     best_r = times_r.index(max(times_r))
 
     add_to_hall_of_fame(
@@ -421,8 +430,6 @@ def simulate():
     mutate_all()
 
     return min(times_t), max(times_r)
-
-
 def showcase_setup():
 
     global tagger, runner
@@ -450,10 +457,8 @@ def showcase_step():
     tagger.draw_self()
     runner.draw_self()
 
-
 def start_training():
-
-    return asyncio.create_task(asyncio.to_thread(simulate))
+    return asyncio.create_task(simulate())
 
 
 def draw_loading_bar(progress):
@@ -502,7 +507,7 @@ async def main():
 
     showcase_setup()
 
-    training_task = start_training()
+    training_task = None
 
     while running:
 

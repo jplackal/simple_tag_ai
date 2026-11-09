@@ -1,167 +1,93 @@
 # simple_tag_ai
-temp : ai code
-import asyncio
-import pygame
-import random
-import math
-import copy
+# AI Tag
 
-pygame.init()
-random.seed()
+An artificial intelligence simulation built with Python and Pygame. Two populations of AI agents compete in a game of tag: taggers try to catch runners, while runners try to avoid being caught.
 
-# --- CONFIGURATION ---
-WIDTH, HEIGHT = 1300, 750
-INNER_LAYERS = 3
-INNER_NEURON_COUNT = 20
-AI_COUNT = 25
-INPUT_COUNT = 8
-OUTPUT_COUNT = 4
-TAGGER_SPEED = 5
-RUNNER_SPEED = 5
+The agents use neural networks to make decisions. Over generations, their networks mutate and the best-performing agents are preserved in a Hall of Fame.
 
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("AI Tag Evolution")
-clock = pygame.time.Clock()
+## 🎮 Play the Game
 
-# --- AI CLASS ---
-class NeuralNetwork:
-    def __init__(self):
-        # Initialize weights randomly
-        self.weights = []
-        # Input Layer
-        layer = []
-        for i in range(INNER_NEURON_COUNT):
-            layer.append([ [random.uniform(-1, 1) for _ in range(INPUT_COUNT)], random.uniform(-1, 1) ])
-        self.weights.append(layer)
-        # Hidden Layers
-        for _ in range(INNER_LAYERS - 1):
-            layer = []
-            for i in range(INNER_NEURON_COUNT):
-                layer.append([ [random.uniform(-1, 1) for _ in range(INNER_NEURON_COUNT)], random.uniform(-1, 1) ])
-            self.weights.append(layer)
-        # Output Layer
-        layer = []
-        for i in range(OUTPUT_COUNT):
-            layer.append([ [random.uniform(-1, 1) for _ in range(INNER_NEURON_COUNT)], -1 ])
-        self.weights.append(layer)
+- **Play in your browser:** [PLAY AI TAG ON ITCH.IO](https://YOUR-ITCH-IO-LINK-HERE)
+- **Source code:** [VIEW THE SOURCE CODE](https://YOUR-GITHUB-LINK-HERE)
 
-    def sigmoid(self, x):
-        if x >= 0: return 1 / (1 + math.exp(-x))
-        return math.exp(x) / (1 + math.exp(x))
+## How to Run
 
-    def predict(self, inputs):
-        current_inputs = inputs
-        for layer_idx, layer in enumerate(self.weights):
-            new_outputs = []
-            for neuron in layer:
-                weights, bias = neuron
-                total = sum(i * w for i, w in zip(current_inputs, weights)) + bias
-                new_outputs.append(self.sigmoid(total))
-            current_inputs = new_outputs
-        return current_inputs
+### Requirements
 
-    def mutate(self, rate=0.1):
-        # Create a copy and slightly tweak weights
-        mutated = copy.deepcopy(self)
-        for layer in mutated.weights:
-            for neuron in layer:
-                # Mutate weights
-                neuron[0] = [w + random.uniform(-rate, rate) for w in neuron[0]]
-                # Mutate bias
-                neuron[1] += random.uniform(-rate, rate)
-        return mutated
+- Python 3
+- Pygame
 
-# --- GAME LOGIC ---
-def check_collision(pos1, pos2):
-    dist = math.sqrt((pos1[0]-pos2[0])**2 + (pos1[1]-pos2[1])**2)
-    return dist < 50 # Combined radii
+### Installation
 
-def run_match(tagger_net, runner_net, visual=False):
-    # Positions: [x, y, vx, vy]
-    t_pos = [WIDTH // 5, HEIGHT // 2, 0, 0]
-    r_pos = [(WIDTH // 5) * 4, HEIGHT // 2, 0, 0]
-    
-    frames = 0
-    max_frames = 1000 # Prevent infinite loops
-    
-    while frames < max_frames:
-        # Tagger AI
-        t_in = [t_pos[0]/WIDTH, t_pos[1]/HEIGHT, t_pos[2]/TAGGER_SPEED, t_pos[3]/TAGGER_SPEED, 0,0,0,0]
-        t_out = tagger_net.predict(t_in)
-        action = max(range(4), key=lambda i: t_out[i])
-        if action == 0: t_pos[3] -= TAGGER_SPEED
-        elif action == 1: t_pos[3] += TAGGER_SPEED
-        elif action == 2: t_pos[2] -= TAGGER_SPEED
-        else: t_pos[2] += TAGGER_SPEED
-        
-        # Runner AI
-        r_in = [r_pos[0]/WIDTH, r_pos[1]/HEIGHT, r_pos[2]/RUNNER_SPEED, r_pos[3]/RUNNER_SPEED, 0,0,0,0]
-        r_out = runner_net.predict(r_in)
-        action = max(range(4), key=lambda i: r_out[i])
-        if action == 0: r_pos[3] -= RUNNER_SPEED
-        elif action == 1: r_pos[3] += RUNNER_SPEED
-        elif action == 2: r_pos[2] -= RUNNER_SPEED
-        else: r_pos[2] += RUNNER_SPEED
+1. Download or clone this repository.
+2. Open a terminal in the project folder.
+3. Install Pygame:
 
-        # Physics
-        for p in [t_pos, r_pos]:
-            p[2] *= 0.7; p[3] *= 0.7
-            p[0] = (p[0] + p[2]) % WIDTH
-            p[1] = (p[1] + p[3]) % HEIGHT
+   ```bash
+   pip install pygame
+   ```
 
-        if check_collision(t_pos, r_pos):
-            return frames # Return time taken to tag
+4. Run the main Python file:
 
-        if visual:
-            pygame.draw.circle(screen, (255,0,0), (int(t_pos[0]), int(t_pos[1])), 25)
-            pygame.draw.circle(screen, (0,0,255), (int(r_pos[0]), int(r_pos[1])), 25)
-            pygame.display.flip()
-            clock.tick(60)
+   ```bash
+   python3 main.py
+   ```
 
-        frames += 1
-    return max_frames
+If you are using Windows, you may need to use `python main.py` instead.
 
-# --- EVOLUTION SYSTEM ---
-async def main():
-    # Initial Population
-    taggers = [NeuralNetwork() for _ in range(AI_COUNT)]
-    runners = [NeuralNetwork() for _ in range(AI_COUNT)]
-    
-    hall_of_fame_taggers = []
-    hall_of_fame_runners = []
+## How to Play
 
-    generation = 1
-    while True:
-        print(f"--- Generation {generation} ---")
-        
-        # Tournament: Every tagger vs every runner
-        t_scores = [0] * AI_COUNT
-        r_scores = [0] * AI_COUNT
-        
-        for t_idx in range(AI_COUNT):
-            for r_idx in range(AI_COUNT):
-                time = run_match(taggers[t_idx], runners[r_idx])
-                t_scores[t_idx] += time
-                r_scores[r_idx] += time
+The simulation has two types of AI:
 
-        # Best Tagger = lowest total time
-        best_t_idx = t_scores.index(min(t_scores))
-        # Best Runner = highest total time
-        best_r_idx = r_scores.index(max(r_scores))
-        
-        champ_t = taggers[best_t_idx]
-        champ_r = runners[best_r_idx]
-        
-        hall_of_fame_taggers.append(champ_t)
-        hall_of_fame_runners.append(champ_r)
-        
-        print(f"Best Tagger Score: {t_scores[best_t_idx]} | Best Runner Score: {r_scores[best_r_idx]}")
+- **Taggers:** Try to catch the runners.
+- **Runners:** Try to stay away from the taggers for as long as possible.
 
-        # EVOLVE: Create next generation from champions
-        taggers = [champ_t.mutate() for _ in range(AI_COUNT)]
-        runners = [champ_r.mutate() for _ in range(AI_COUNT)]
-        
-        generation += 1
-        await asyncio.sleep(0)
+The simulation trains the AI populations over multiple generations. You can watch the best agents compete in the showcase.
 
-asyncio.run(main())
+## How It Works
+
+### 1. Neural Networks
+
+Every AI agent has its own neural network.
+
+The network receives information about the agent and its opponent, including:
+
+- Its own position.
+- Its own velocity.
+- The relative position of its opponent.
+- The opponent's velocity.
+
+These values are passed through hidden layers of neurons. Each neuron uses weights and a bias to calculate its output.
+
+The network produces four outputs, representing four possible movement directions:
+
+1. Down
+2. Right
+3. Up
+4. Left
+
+The direction with the highest output is selected.
+
+### 2. Training and Evaluation
+
+Each generation contains a population of taggers and runners.
+
+Each candidate is tested against agents from the opposing population's Hall of Fame.
+
+The simulation records a fitness score based on:
+
+- How long the match lasts.
+- The average distance between the agents.
+- The final distance between the agents.
+
+The tagger with the lowest total score is selected because taggers want to catch runners quickly.
+
+The runner with the highest total score is selected because runners want to survive and maintain distance.
+
+### 3. Evolution and Mutation
+
+After evaluating a generation:
+
+1. The best tagger and runner are selected.
+2. Copies of these agents are saved in the Hall of Fame.
+3. Most of
