@@ -7,8 +7,8 @@ The agents use neural networks to make decisions. Over generations, their networ
 
 ## 🎮 Play the Game
 
-- **Play in your browser:** [PLAY AI TAG ON ITCH.IO](https://YOUR-ITCH-IO-LINK-HERE)
-- **Source code:** [VIEW THE SOURCE CODE](https://YOUR-GITHUB-LINK-HERE)
+- **Play in your browser:** [PLAY AI TAG ON ITCH.IO](https://jplackal.itch.io/a-simple-ai)
+- **Source code:** [VIEW THE SOURCE CODE](https://github.com/jplackal/simple_tag_ai/blob/main/main.py)
 
 ## How to Run
 
