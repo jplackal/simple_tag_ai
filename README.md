@@ -1,3 +1,4 @@
+<img width="884" height="512" alt="IMG_1721" src="https://github.com/user-attachments/assets/a299ba6e-40f8-4829-9a00-f1bc33aa3fd8" />
 Simple tag ai
 
 Links:
